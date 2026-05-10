@@ -1,0 +1,1383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blackjack — 6 Deck</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --felt:       #1a5c35;
+  --felt-dk:    #123d24;
+  --felt-rim:   rgba(201,168,76,0.22);
+  --chrome:     #131820;
+  --chrome-mid: #1b2232;
+  --chrome-lt:  #212d40;
+  --gold:       #c9a84c;
+  --gold-lt:    #e5c97a;
+  --cream:      #f5f0e8;
+  --red:        #c8000a;
+  --card-w:     72px;
+  --card-h:     104px;
+}
+
+html, body { height: 100%; overflow-x: hidden; }
+
+body {
+  background: var(--felt);
+  color: var(--cream);
+  font-family: 'Inter', sans-serif;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ═══════════════════════ HEADER ═══════════════════════ */
+#hdr {
+  background: var(--chrome);
+  border-bottom: 2px solid var(--gold);
+  padding: 10px 22px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+#hdr h1 {
+  font-family: 'Playfair Display', serif;
+  color: var(--gold);
+  font-size: 1.75rem;
+  letter-spacing: 7px;
+  text-shadow: 0 0 24px rgba(201,168,76,0.45);
+  flex-shrink: 0;
+}
+
+.pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.pill {
+  background: var(--chrome-lt);
+  border: 1px solid #2a3a52;
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.pill b { color: var(--gold-lt); }
+.pill.pos b { color: #4ade80; }
+.pill.neg b { color: #f87171; }
+
+.hdr-r { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
+
+.tog {
+  background: var(--chrome-lt);
+  border: 1px solid #2a3a52;
+  border-radius: 6px;
+  color: rgba(245,240,232,0.5);
+  padding: 5px 12px;
+  font: 600 0.78rem 'Inter', sans-serif;
+  cursor: pointer;
+  transition: all .2s;
+}
+.tog.on { border-color: var(--gold); color: var(--gold-lt); background: rgba(201,168,76,0.08); }
+
+/* ═══════════════════════ GAME AREA ═══════════════════════ */
+#game {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 22px 12px;
+  gap: 10px;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  overflow-y: auto;
+}
+
+/* ─── DEALER ─── */
+#dealer-sec {
+  background: var(--felt-dk);
+  border: 1px solid var(--felt-rim);
+  border-radius: 12px;
+  padding: 14px 18px 16px;
+  min-height: 168px;
+  flex-shrink: 0;
+}
+
+.sec-lbl {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: rgba(245,240,232,0.38);
+  margin-bottom: 10px;
+}
+
+#dealer-cards { display: flex; gap: 7px; flex-wrap: wrap; min-height: 108px; align-items: flex-start; }
+#dealer-score { margin-top: 8px; font-size: 0.9rem; color: rgba(245,240,232,0.78); min-height: 20px; }
+
+/* ─── MESSAGE ─── */
+#msg {
+  text-align: center;
+  font-family: 'Playfair Display', serif;
+  font-size: 1.15rem;
+  color: var(--gold-lt);
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ─── PLAYER ─── */
+#player-sec { flex: 1; display: flex; flex-direction: column; }
+
+#hands-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: flex-start;
+  flex: 1;
+}
+
+.hbox {
+  background: var(--felt-dk);
+  border: 2px solid rgba(201,168,76,0.12);
+  border-radius: 10px;
+  padding: 12px 14px;
+  flex: 1;
+  min-width: 185px;
+  max-width: 340px;
+  transition: border-color .3s, box-shadow .3s;
+}
+
+.hbox.active {
+  border-color: var(--gold);
+  box-shadow: 0 0 20px rgba(201,168,76,0.3);
+}
+
+.hmeta  { font-size: 0.7rem; letter-spacing: 1px; text-transform: uppercase; color: rgba(245,240,232,0.36); margin-bottom: 8px; }
+.hcards { display: flex; gap: 6px; flex-wrap: wrap; min-height: 108px; align-items: flex-start; }
+.hscore { margin-top: 7px; font-size: 0.9rem; color: rgba(245,240,232,0.83); }
+.hres   { margin-top: 5px; font-weight: 600; font-size: 0.95rem; min-height: 22px; }
+
+.win-t  { color: #4ade80; }
+.bj-t   { color: var(--gold-lt); text-shadow: 0 0 10px rgba(201,168,76,0.6); }
+.lose-t { color: #f87171; }
+.push-t { color: #fbbf24; }
+
+/* result flash animations */
+@keyframes fw { 0%,100%{box-shadow:none;border-color:rgba(201,168,76,.12)} 40%{box-shadow:0 0 36px rgba(74,222,128,.6);border-color:#4ade80} }
+@keyframes fl { 0%,100%{box-shadow:none;border-color:rgba(201,168,76,.12)} 40%{box-shadow:0 0 36px rgba(248,113,113,.6);border-color:#f87171} }
+@keyframes fp { 0%,100%{box-shadow:none;border-color:rgba(201,168,76,.12)} 40%{box-shadow:0 0 36px rgba(251,191,36,.6);border-color:#fbbf24} }
+@keyframes fb { 0%,100%{box-shadow:none;border-color:rgba(201,168,76,.12)} 35%,65%{box-shadow:0 0 48px rgba(201,168,76,.85);border-color:var(--gold)} }
+
+.aw { animation: fw 1.5s ease forwards; }
+.al { animation: fl 1.5s ease forwards; }
+.ap { animation: fp 1.5s ease forwards; }
+.ab { animation: fb 1.8s ease forwards; }
+
+/* ═══════════════════════ CARDS ═══════════════════════ */
+.card {
+  width: var(--card-w);
+  height: var(--card-h);
+  border-radius: 7px;
+  background: #fff;
+  border: 1px solid #c0c0c0;
+  box-shadow: 2px 3px 8px rgba(0,0,0,0.38);
+  position: relative;
+  flex-shrink: 0;
+  user-select: none;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+}
+.card.red { color: var(--red); }
+.card.blk { color: #111; }
+
+.c-tl { position:absolute; top:4px; left:5px; display:flex; flex-direction:column; line-height:1; }
+.c-rank { font-size: 15px; }
+.c-ss   { font-size: 10px; }
+.c-ctr  { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:38px; line-height:1; }
+.c-br   { position:absolute; bottom:4px; right:5px; display:flex; flex-direction:column; align-items:flex-end; transform:rotate(180deg); line-height:1; }
+
+.card-bk {
+  width: var(--card-w);
+  height: var(--card-h);
+  border-radius: 7px;
+  border: 2px solid #0a358a;
+  box-shadow: 2px 3px 8px rgba(0,0,0,0.38);
+  background: repeating-linear-gradient(135deg, #0d2d6e 0,#0d2d6e 5px,#1848a0 5px,#1848a0 10px);
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+.card-bk::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 1px solid rgba(255,255,255,0.13);
+  border-radius: 4px;
+}
+.card-bk::before {
+  content: '♠';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  font-size: 32px;
+  color: rgba(255,255,255,0.06);
+}
+
+/* ═══════════════════════ CONTROLS ═══════════════════════ */
+#ctrl {
+  background: var(--chrome);
+  border-top: 2px solid var(--gold);
+  padding: 12px 22px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  flex-shrink: 0;
+}
+
+/* status row */
+#stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 18px;
+}
+.stat-txt   { font-size: 0.77rem; color: rgba(245,240,232,0.45); font-style: italic; }
+#count-disp { font-size: 0.79rem; color: rgba(245,240,232,0.62); font-variant-numeric: tabular-nums; }
+
+/* bet row */
+#bet-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  width: 54px; height: 54px;
+  border-radius: 50%;
+  border: 3px solid;
+  font: 700 0.72rem 'Inter', sans-serif;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform .12s, box-shadow .12s, opacity .15s;
+  flex-shrink: 0;
+}
+.chip:hover:not([disabled])  { transform: translateY(-3px); box-shadow: 0 7px 16px rgba(0,0,0,.45); }
+.chip:active:not([disabled]) { transform: translateY(0); }
+.chip[disabled] { opacity: .32; cursor: not-allowed; }
+
+.c10  { background:#1d4ed8; border-color:#93c5fd; color:#fff; }
+.c25  { background:#15803d; border-color:#86efac; color:#fff; }
+.c50  { background:#b91c1c; border-color:#fca5a5; color:#fff; }
+.c100 { background:#7c3aed; border-color:#c4b5fd; color:#fff; }
+
+.bet-lbl {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--gold-lt);
+  min-width: 76px;
+  flex-shrink: 0;
+}
+
+#cust {
+  width: 86px;
+  padding: 7px 10px;
+  background: var(--chrome-lt);
+  border: 1px solid #2a3a52;
+  border-radius: 6px;
+  color: var(--cream);
+  font: 0.84rem 'Inter', sans-serif;
+}
+#cust::placeholder { color: rgba(245,240,232,0.32); }
+#cust:focus { outline: 1px solid var(--gold); }
+
+/* buttons */
+.btn {
+  padding: 9px 18px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  font: 600 0.84rem 'Inter', sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform .14s, box-shadow .14s, opacity .15s;
+}
+.btn:hover:not([disabled])  { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(0,0,0,0.32); }
+.btn:active:not([disabled]) { transform: translateY(0); }
+.btn[disabled] { opacity: .28; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+
+.btn-gold  { background: var(--gold); color: #111; font-size: 0.9rem; padding: 10px 22px; }
+.btn-dark  { background: var(--chrome-lt); color: var(--cream); border-color: #2a3a52; }
+
+.b-hit  { background: var(--chrome-lt); border-color: #22c55e; color: #4ade80; }
+.b-std  { background: var(--chrome-lt); border-color: #ef4444; color: #f87171; }
+.b-dbl  { background: var(--chrome-lt); border-color: #f59e0b; color: #fbbf24; }
+.b-spl  { background: var(--chrome-lt); border-color: #3b82f6; color: #60a5fa; }
+.b-sur  { background: var(--chrome-lt); border-color: #a855f7; color: #c084fc; }
+.b-hnt  { background: var(--chrome-lt); border-color: var(--gold); color: var(--gold-lt); }
+
+/* insurance row */
+#ins-row {
+  background: rgba(201,168,76,0.07);
+  border: 1px solid rgba(201,168,76,0.28);
+  border-radius: 8px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+#ins-row p { color: var(--gold-lt); font-size: 0.88rem; }
+
+/* action row */
+#act-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* hint box */
+#hint-box {
+  background: rgba(201,168,76,0.09);
+  border: 1px solid rgba(201,168,76,0.32);
+  border-radius: 7px;
+  padding: 9px 14px;
+  font-size: 0.88rem;
+  color: var(--gold-lt);
+  display: none;
+}
+
+/* ═══════════════════════ DEVIATION MODAL ═══════════════════════ */
+#dev-ov {
+  display: none;
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,0.65);
+  align-items: center; justify-content: center;
+}
+#dev-ov.open { display: flex; }
+
+#dev-modal {
+  background: var(--chrome-mid);
+  border: 2px solid var(--gold);
+  border-radius: 12px;
+  padding: 28px 30px;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 0 50px rgba(0,0,0,0.55);
+}
+#dev-modal h3 { color: #fbbf24; margin-bottom: 11px; font-size: 1rem; letter-spacing: 0.4px; }
+#dev-modal p  { color: var(--cream); line-height: 1.58; font-size: 0.86rem; margin-bottom: 20px; }
+.dev-btns { display: flex; gap: 10px; justify-content: center; }
+</style>
+</head>
+<body>
+
+<!-- ════ HEADER ════ -->
+<header id="hdr">
+  <h1>BLACKJACK</h1>
+  <div class="pills">
+    <div class="pill">Balance: <b id="bal">$1,000.00</b></div>
+    <div class="pill">Bet: <b id="bet-d">$0</b></div>
+    <div class="pill" id="pnl-pill">P/L: <b id="pnl">+$0.00</b></div>
+  </div>
+  <div class="hdr-r">
+    <button class="tog" id="count-tog">Count: OFF</button>
+  </div>
+</header>
+
+<!-- ════ GAME ════ -->
+<div id="game">
+
+  <section id="dealer-sec">
+    <div class="sec-lbl">Dealer</div>
+    <div id="dealer-cards"></div>
+    <div id="dealer-score"></div>
+  </section>
+
+  <div id="msg"></div>
+
+  <section id="player-sec">
+    <div id="hands-row"></div>
+  </section>
+
+</div>
+
+<!-- ════ CONTROLS ════ -->
+<div id="ctrl">
+
+  <div id="stat-row">
+    <span class="stat-txt" id="last-txt"></span>
+    <span id="count-disp" style="display:none"></span>
+  </div>
+
+  <!-- bet -->
+  <div id="bet-row">
+    <button class="chip c10"  data-v="10">$10</button>
+    <button class="chip c25"  data-v="25">$25</button>
+    <button class="chip c50"  data-v="50">$50</button>
+    <button class="chip c100" data-v="100">$100</button>
+    <input id="cust" type="number" min="10" max="500" step="5" placeholder="Custom $">
+    <span class="bet-lbl">Bet: $<span id="stg">0</span></span>
+    <button class="btn btn-dark" id="b-clr">Clear</button>
+    <button class="btn btn-gold" id="b-deal">Deal</button>
+  </div>
+
+  <!-- insurance -->
+  <div id="ins-row" style="display:none">
+    <p>Dealer shows Ace — Insurance? (pays 2:1, costs $<span id="ins-cost">0</span>)</p>
+    <button class="btn btn-gold" id="b-ins-y">Take Insurance</button>
+    <button class="btn btn-dark"  id="b-ins-n">No Insurance</button>
+  </div>
+
+  <!-- actions -->
+  <div id="act-row" style="display:none">
+    <button class="btn b-hit" id="b-hit">Hit (H)</button>
+    <button class="btn b-std" id="b-std">Stand (S)</button>
+    <button class="btn b-dbl" id="b-dbl">Double (D)</button>
+    <button class="btn b-spl" id="b-spl">Split (P)</button>
+    <button class="btn b-sur" id="b-sur">Surrender (Q)</button>
+    <button class="btn b-hnt" id="b-hnt">Hint</button>
+  </div>
+
+  <div id="hint-box"></div>
+
+</div>
+
+<!-- ════ DEVIATION MODAL ════ -->
+<div id="dev-ov">
+  <div id="dev-modal">
+    <h3>⚠ Strategy Deviation</h3>
+    <p id="dev-msg"></p>
+    <div class="dev-btns">
+      <button class="btn btn-dark" id="b-dev-no">Reconsider</button>
+      <button class="btn btn-gold" id="b-dev-ok">Proceed Anyway</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ════════════════════════════════════════════════════════════════
+//  CONSTANTS
+// ════════════════════════════════════════════════════════════════
+const CFG = {
+  DECKS:      6,
+  RESHUFFLE:  0.75,
+  START_BAL:  1000,
+  MIN_BET:    10,
+  MAX_BET:    500,
+  MAX_SPLITS: 3,    // max 3 splits → 4 hands
+  BJ_PAYS:    1.5,  // 3:2
+  INS_PAYS:   2,    // 2:1
+};
+
+const SUITS  = ['♠','♥','♦','♣'];
+const REDS   = new Set(['♥','♦']);
+const RANKS  = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+
+// Dealer upcard index 0–9 for 2,3,4,5,6,7,8,9,10,A
+const UP_IDX = {'2':0,'3':1,'4':2,'5':3,'6':4,'7':5,'8':6,'9':7,'10':8,'A':9};
+
+// ════════════════════════════════════════════════════════════════
+//  BASIC STRATEGY TABLES  (6-deck, H17, DAS, late surrender)
+//
+//  Each array is indexed [0..9] = dealer upcard 2,3,4,5,6,7,8,9,10,A
+//
+//  Codes
+//    H   = Hit
+//    S   = Stand
+//    D   = Double (else Hit)
+//    Ds  = Double (else Stand)
+//    P   = Split
+//    Ph  = Split if DAS allowed, else Hit  → always Split in our ruleset
+//    R   = Surrender (else Hit)
+//    Rs  = Surrender (else Stand)
+//    Rp  = Surrender (else Split, else Hit)
+// ════════════════════════════════════════════════════════════════
+const BS_PAIR = {
+  //         2     3     4     5     6     7     8     9    10     A
+  'A':  ['P',  'P',  'P',  'P',  'P',  'P',  'P',  'P',  'P',  'P' ],
+  '10': ['S',  'S',  'S',  'S',  'S',  'S',  'S',  'S',  'S',  'S' ],
+  '9':  ['P',  'P',  'P',  'P',  'P',  'S',  'P',  'P',  'S',  'S' ],
+  '8':  ['P',  'P',  'P',  'P',  'P',  'P',  'P',  'P',  'P',  'Rp'],
+  '7':  ['P',  'P',  'P',  'P',  'P',  'P',  'H',  'H',  'H',  'H' ],
+  '6':  ['Ph', 'P',  'P',  'P',  'P',  'H',  'H',  'H',  'H',  'H' ],
+  '5':  ['D',  'D',  'D',  'D',  'D',  'D',  'D',  'D',  'H',  'H' ], // never split
+  '4':  ['H',  'H',  'H',  'Ph', 'Ph', 'H',  'H',  'H',  'H',  'H' ],
+  '3':  ['Ph', 'Ph', 'P',  'P',  'P',  'P',  'H',  'H',  'H',  'H' ],
+  '2':  ['Ph', 'Ph', 'P',  'P',  'P',  'P',  'H',  'H',  'H',  'H' ],
+};
+
+const BS_SOFT = {
+  //         2     3     4     5     6     7     8     9    10     A
+  13:   ['H',  'H',  'H',  'D',  'D',  'H',  'H',  'H',  'H',  'H' ],  // A,2
+  14:   ['H',  'H',  'H',  'D',  'D',  'H',  'H',  'H',  'H',  'H' ],  // A,3
+  15:   ['H',  'H',  'D',  'D',  'D',  'H',  'H',  'H',  'H',  'H' ],  // A,4
+  16:   ['H',  'H',  'D',  'D',  'D',  'H',  'H',  'H',  'H',  'H' ],  // A,5
+  17:   ['H',  'D',  'D',  'D',  'D',  'H',  'H',  'H',  'H',  'H' ],  // A,6
+  18:   ['Ds', 'D',  'D',  'D',  'D',  'S',  'S',  'H',  'H',  'H' ],  // A,7
+  19:   ['S',  'S',  'S',  'S',  'S',  'S',  'S',  'S',  'S',  'S' ],  // A,8
+  20:   ['S',  'S',  'S',  'S',  'S',  'S',  'S',  'S',  'S',  'S' ],  // A,9
+};
+
+const BS_HARD = {
+  //         2     3     4     5     6     7     8     9    10     A
+   4:   ['H',  'H',  'H',  'H',  'H',  'H',  'H',  'H',  'H',  'H' ],
+   5:   ['H',  'H',  'H',  'H',  'H',  'H',  'H',  'H',  'H',  'H' ],
+   6:   ['H',  'H',  'H',  'H',  'H',  'H',  'H',  'H',  'H',  'H' ],
+   7:   ['H',  'H',  'H',  'H',  'H',  'H',  'H',  'H',  'H',  'H' ],
+   8:   ['H',  'H',  'H',  'H',  'H',  'H',  'H',  'H',  'H',  'H' ],
+   9:   ['H',  'D',  'D',  'D',  'D',  'H',  'H',  'H',  'H',  'H' ],
+  10:   ['D',  'D',  'D',  'D',  'D',  'D',  'D',  'D',  'H',  'H' ],
+  11:   ['D',  'D',  'D',  'D',  'D',  'D',  'D',  'D',  'D',  'D' ],  // H17: D vs A
+  12:   ['H',  'H',  'S',  'S',  'S',  'H',  'H',  'H',  'H',  'H' ],
+  13:   ['S',  'S',  'S',  'S',  'S',  'H',  'H',  'H',  'H',  'H' ],
+  14:   ['S',  'S',  'S',  'S',  'S',  'H',  'H',  'H',  'H',  'H' ],
+  15:   ['S',  'S',  'S',  'S',  'S',  'H',  'H',  'H',  'R',  'R' ],
+  16:   ['S',  'S',  'S',  'S',  'S',  'H',  'H',  'R',  'R',  'R' ],
+  17:   ['S',  'S',  'S',  'S',  'S',  'S',  'S',  'S',  'S',  'Rs'],  // Rs vs A (H17)
+  18:   ['S',  'S',  'S',  'S',  'S',  'S',  'S',  'S',  'S',  'S' ],
+  19:   ['S',  'S',  'S',  'S',  'S',  'S',  'S',  'S',  'S',  'S' ],
+  20:   ['S',  'S',  'S',  'S',  'S',  'S',  'S',  'S',  'S',  'S' ],
+  21:   ['S',  'S',  'S',  'S',  'S',  'S',  'S',  'S',  'S',  'S' ],
+};
+
+// Hi-Lo card counting values
+const HI_LO = {
+  '2':1,'3':1,'4':1,'5':1,'6':1,
+  '7':0,'8':0,'9':0,
+  '10':-1,'J':-1,'Q':-1,'K':-1,'A':-1,
+};
+
+// ════════════════════════════════════════════════════════════════
+//  GAME STATE
+// ════════════════════════════════════════════════════════════════
+const G = {
+  shoe:      [],
+  dealtCt:   0,
+  runCount:  0,
+
+  phase:     'bet',   // bet | ins | play | dealer | done
+  dCards:    [],      // dealer cards
+  dealerBJ:  false,
+  holeUp:    false,
+
+  hands:     [],      // player hand objects
+  hIdx:      0,       // active hand index
+
+  stagedBet: 25,
+  roundBet:  0,
+  insBet:    0,
+
+  balance:      CFG.START_BAL,
+  sessionStart: CFG.START_BAL,
+
+  hintShown:  false,
+  showCount:  false,
+  pending:    null,   // pending action for deviation dialog
+  lastSummary:'',
+};
+
+// ════════════════════════════════════════════════════════════════
+//  SHOE MANAGEMENT
+// ════════════════════════════════════════════════════════════════
+function buildShoe() {
+  const cards = [];
+  for (let d = 0; d < CFG.DECKS; d++)
+    for (const s of SUITS)
+      for (const r of RANKS)
+        cards.push({ rank: r, suit: s });
+  return cards;
+}
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+
+function freshShoe() {
+  G.shoe = buildShoe();
+  shuffle(G.shoe);
+  G.dealtCt  = 0;
+  G.runCount = 0;
+}
+
+function draw() {
+  if (G.dealtCt / (CFG.DECKS * 52) >= CFG.RESHUFFLE) freshShoe();
+  return G.shoe[G.dealtCt++];
+}
+
+function countCard(card) {
+  const key = ['10','J','Q','K'].includes(card.rank) ? '10' : card.rank;
+  G.runCount += HI_LO[key] ?? 0;
+}
+
+// ════════════════════════════════════════════════════════════════
+//  HAND VALUE UTILITIES
+// ════════════════════════════════════════════════════════════════
+function cVal(card) {
+  if (['J','Q','K','10'].includes(card.rank)) return 10;
+  if (card.rank === 'A') return 11;
+  return parseInt(card.rank);
+}
+
+function total(cards) {
+  let t = 0, aces = 0;
+  for (const c of cards) { t += cVal(c); if (c.rank === 'A') aces++; }
+  while (t > 21 && aces > 0) { t -= 10; aces--; }
+  return t;
+}
+
+function isSoft(cards) {
+  let t = 0, aces = 0;
+  for (const c of cards) { t += cVal(c); if (c.rank === 'A') aces++; }
+  while (t > 21 && aces > 0) { t -= 10; aces--; }
+  return aces > 0;
+}
+
+// Natural blackjack: original 2-card 21, not from a split
+function isNatural(hand) {
+  return !hand.fromSplit && hand.cards.length === 2 && total(hand.cards) === 21;
+}
+
+function pairKey(card) {
+  return ['10','J','Q','K'].includes(card.rank) ? '10' : card.rank;
+}
+
+function isPair(cards) {
+  return cards.length === 2 && pairKey(cards[0]) === pairKey(cards[1]);
+}
+
+function upKey(card) {
+  return ['10','J','Q','K'].includes(card.rank) ? '10' : card.rank;
+}
+
+function upIdx(card) {
+  return UP_IDX[upKey(card)] ?? 9;
+}
+
+function scoreStr(cards) {
+  const t = total(cards);
+  if (t > 21) return 'Bust';
+  if (t === 21) return '21';
+  if (isSoft(cards)) return 'Soft ' + t;
+  return '' + t;
+}
+
+// ════════════════════════════════════════════════════════════════
+//  BASIC STRATEGY
+// ════════════════════════════════════════════════════════════════
+function rawBS(hand, dealerUp) {
+  const cards = hand.cards;
+  const idx   = upIdx(dealerUp);
+  const tot   = total(cards);
+  const soft  = isSoft(cards);
+
+  // Pair check: only on first 2 cards and not from ace-split
+  if (cards.length === 2 && !hand.fromAce && isPair(cards)) {
+    const pk  = pairKey(cards[0]);
+    const rec = BS_PAIR[pk]?.[idx];
+    if (rec) return rec;
+  }
+
+  // Soft hand (A counted as 11)
+  if (soft && tot >= 13 && tot <= 20) {
+    return BS_SOFT[tot]?.[idx] ?? 'S';
+  }
+
+  // Hard hand
+  const clamped = Math.min(Math.max(tot, 4), 21);
+  return BS_HARD[clamped]?.[idx] ?? (tot >= 17 ? 'S' : 'H');
+}
+
+function resolveBS(raw, av) {
+  switch (raw) {
+    case 'H':  return 'hit';
+    case 'S':  return 'stand';
+    case 'D':  return av.canD ? 'double'   : 'hit';
+    case 'Ds': return av.canD ? 'double'   : 'stand';
+    case 'P':  return av.canP ? 'split'    : 'hit';
+    case 'Ph': return av.canP ? 'split'    : 'hit';   // DAS → always split
+    case 'Pd': return av.canP ? 'split'    : 'double';
+    case 'Ps': return av.canP ? 'split'    : 'stand';
+    case 'R':  return av.canR ? 'surrender': 'hit';
+    case 'Rs': return av.canR ? 'surrender': 'stand';
+    case 'Rp': return av.canR ? 'surrender': (av.canP ? 'split' : 'hit');
+    default:   return 'hit';
+  }
+}
+
+function actionLabel(a) {
+  return { hit:'Hit', stand:'Stand', double:'Double Down',
+           split:'Split', surrender:'Surrender' }[a] ?? a;
+}
+
+// What actions are currently legal for the given hand index
+function avail(hIdx) {
+  const h    = G.hands[hIdx];
+  const tot  = total(h.cards);
+  const isF  = !h.acted;                        // first action on this hand
+  const nSpl = G.hands.length - 1;              // number of splits so far
+  const dUp  = G.dCards[0];
+
+  return {
+    canH: tot < 21 && !h.fromAce,
+    canS: true,
+    canD: isF && !h.fromAce && G.balance >= h.bet,
+    canP: isF && !h.fromAce && isPair(h.cards) && nSpl < CFG.MAX_SPLITS && G.balance >= h.bet,
+    // Surrender: first action, not a split hand, dealer does NOT show Ace (per ruleset)
+    canR: isF && !h.fromSplit && upKey(dUp) !== 'A',
+  };
+}
+
+function getBSRec(hIdx) {
+  const h   = G.hands[hIdx];
+  const raw = rawBS(h, G.dCards[0]);
+  const av  = avail(hIdx);
+  const res = resolveBS(raw, av);
+  return { resolved: res, label: actionLabel(res) };
+}
+
+// ════════════════════════════════════════════════════════════════
+//  CARD HTML
+// ════════════════════════════════════════════════════════════════
+function cardHTML(card, faceDown) {
+  if (faceDown) return `<div class="card-bk" aria-label="Face-down card"></div>`;
+  const red = REDS.has(card.suit);
+  const cls = red ? 'red' : 'blk';
+  const r = card.rank, s = card.suit;
+  return `<div class="card ${cls}" aria-label="${r}${s}">
+    <div class="c-tl"><div class="c-rank">${r}</div><div class="c-ss">${s}</div></div>
+    <div class="c-ctr">${s}</div>
+    <div class="c-br"><div class="c-rank">${r}</div><div class="c-ss">${s}</div></div>
+  </div>`;
+}
+
+// ════════════════════════════════════════════════════════════════
+//  RENDERING
+// ════════════════════════════════════════════════════════════════
+function render() {
+  renderDealer();
+  renderHands();
+  renderControls();
+  renderStats();
+  renderCount();
+}
+
+function renderDealer() {
+  const cardsEl = document.getElementById('dealer-cards');
+  const scoreEl = document.getElementById('dealer-score');
+  const cards   = G.dCards;
+
+  if (!cards.length) { cardsEl.innerHTML = ''; scoreEl.textContent = ''; return; }
+
+  const showHole = G.holeUp || G.phase === 'done';
+  cardsEl.innerHTML = cards.map((c, i) => cardHTML(c, i === 1 && !showHole)).join('');
+
+  if (G.phase === 'dealer' || G.phase === 'done') {
+    const sc   = scoreStr(cards);
+    const bjTx = G.dealerBJ ? ' — BLACKJACK' : '';
+    scoreEl.textContent = `Score: ${sc}${bjTx}`;
+  } else if (cards.length) {
+    scoreEl.textContent = `Showing: ${cards[0].rank}`;
+  }
+}
+
+function renderHands() {
+  const row = document.getElementById('hands-row');
+  const msg = document.getElementById('msg');
+  msg.textContent = '';
+
+  if (!G.hands.length) { row.innerHTML = ''; return; }
+
+  row.innerHTML = G.hands.map((h, i) => {
+    const active = i === G.hIdx && G.phase === 'play';
+    const sc     = scoreStr(h.cards);
+    const annot  = h.status === 'bust' ? ' — BUST'
+                 : h.status === 'surr' ? ' — SURRENDERED'
+                 : h.status === 'bj'   ? ' ★ BLACKJACK'
+                 : '';
+    const cHTML  = h.cards.map(c => cardHTML(c, false)).join('');
+    const rHTML  = (G.phase === 'done' && h.result)
+                 ? `<div class="hres ${h.result.css}">${h.result.label}</div>` : '';
+    const anim   = (G.phase === 'done' && h.anim) ? h.anim : '';
+    const nHands = G.hands.length;
+    const meta   = nHands > 1
+                 ? `Hand ${i+1} — $${h.bet}${h.doubled ? ' (×2)' : ''}`
+                 : `Bet: $${h.bet}${h.doubled ? ' (Doubled)' : ''}`;
+
+    return `<div class="hbox ${active ? 'active' : ''} ${anim}">
+      <div class="hmeta">${meta}</div>
+      <div class="hcards">${cHTML}</div>
+      <div class="hscore">${sc}${annot}</div>
+      ${rHTML}
+    </div>`;
+  }).join('');
+
+  if (G.phase === 'play' && G.hands.length > 1)
+    msg.textContent = `Playing Hand ${G.hIdx + 1} of ${G.hands.length}`;
+  else if (G.phase === 'dealer')
+    msg.textContent = "Dealer's turn…";
+}
+
+function renderControls() {
+  const betRow = document.getElementById('bet-row');
+  const actRow = document.getElementById('act-row');
+  const insRow = document.getElementById('ins-row');
+  const hintEl = document.getElementById('hint-box');
+  const phase  = G.phase;
+
+  betRow.style.display = 'none';
+  actRow.style.display = 'none';
+  insRow.style.display = 'none';
+
+  if (phase === 'bet' || phase === 'done') {
+    betRow.style.display = 'flex';
+    document.getElementById('stg').textContent = G.stagedBet;
+
+    const dealBtn = document.getElementById('b-deal');
+    const broke   = G.balance < CFG.MIN_BET;
+    dealBtn.disabled = broke || G.stagedBet < CFG.MIN_BET || G.stagedBet > G.balance;
+
+    document.querySelectorAll('.chip').forEach(ch => {
+      const v = parseInt(ch.dataset.v);
+      ch.disabled = G.stagedBet + v > CFG.MAX_BET || G.stagedBet + v > G.balance;
+    });
+
+    if (broke) document.getElementById('msg').textContent = 'Out of chips! Reload the page to reset.';
+    if (phase === 'done') hintEl.style.display = 'none';
+  }
+
+  if (phase === 'ins') {
+    insRow.style.display = 'flex';
+    const cost = Math.floor(G.roundBet / 2);
+    document.getElementById('ins-cost').textContent = cost;
+    document.getElementById('b-ins-y').disabled = cost > G.balance;
+  }
+
+  if (phase === 'play') {
+    actRow.style.display = 'flex';
+    const av = avail(G.hIdx);
+    document.getElementById('b-hit').disabled = !av.canH;
+    document.getElementById('b-std').disabled = !av.canS;
+    document.getElementById('b-dbl').disabled = !av.canD;
+    document.getElementById('b-spl').disabled = !av.canP;
+    document.getElementById('b-sur').disabled = !av.canR;
+  }
+}
+
+function renderStats() {
+  document.getElementById('bal').textContent =
+    '$' + G.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const betAmt = (G.phase === 'bet' || G.phase === 'done') ? G.stagedBet : G.roundBet;
+  document.getElementById('bet-d').textContent = '$' + betAmt;
+
+  const pnl   = G.balance - G.sessionStart;
+  const sign  = pnl >= 0 ? '+' : '';
+  const pnlEl = document.getElementById('pnl');
+  pnlEl.textContent = sign + '$' + Math.abs(pnl).toFixed(2);
+  document.getElementById('pnl-pill').className = 'pill ' + (pnl >= 0 ? 'pos' : 'neg');
+
+  document.getElementById('last-txt').textContent = G.lastSummary;
+}
+
+function renderCount() {
+  const el = document.getElementById('count-disp');
+  if (!G.showCount) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  const total_cards = CFG.DECKS * 52;
+  const decksLeft   = Math.max((total_cards - G.dealtCt) / 52, 0.5);
+  const tc          = (G.runCount / decksLeft).toFixed(1);
+  const rSign       = G.runCount >= 0 ? '+' : '';
+  const tSign       = parseFloat(tc) >= 0 ? '+' : '';
+  el.textContent    = `RC: ${rSign}${G.runCount}   TC: ${tSign}${tc}`;
+}
+
+// ════════════════════════════════════════════════════════════════
+//  GAME FLOW
+// ════════════════════════════════════════════════════════════════
+function newRound() {
+  if (G.stagedBet < CFG.MIN_BET || G.stagedBet > G.balance) return;
+
+  G.roundBet = G.stagedBet;
+  G.balance -= G.roundBet;
+  G.insBet   = 0;
+  G.dCards   = [];
+  G.dealerBJ = false;
+  G.holeUp   = false;
+  G.hIdx     = 0;
+  G.hintShown = false;
+  G.pending   = null;
+
+  G.hands = [{
+    cards:    [],
+    bet:      G.roundBet,
+    status:   'active',
+    fromSplit: false,
+    fromAce:   false,
+    doubled:   false,
+    acted:     false,
+    result:    null,
+    anim:      '',
+  }];
+
+  // Deal: player, dealer-up, player, dealer-hole
+  const p1 = draw(); countCard(p1); G.hands[0].cards.push(p1);
+  const d1 = draw(); countCard(d1); G.dCards.push(d1);
+  const p2 = draw(); countCard(p2); G.hands[0].cards.push(p2);
+  const d2 = draw();                G.dCards.push(d2);   // hole card: count when revealed
+
+  hideHint();
+  const dUp = G.dCards[0];
+
+  if (upKey(dUp) === 'A') {
+    // Offer insurance before peeking
+    G.phase = 'ins';
+    render();
+  } else if (upKey(dUp) === '10') {
+    // Peek immediately; no insurance for 10-value
+    if (total(G.dCards) === 21) {
+      G.dealerBJ = true;
+      G.holeUp   = true;
+      countCard(d2);
+      resolveDealerBJ();
+    } else {
+      afterPeekNoBJ();
+    }
+  } else {
+    // Dealer shows 2–9: no peek
+    afterPeekNoBJ();
+  }
+}
+
+function afterPeekNoBJ() {
+  // Dealer confirmed to not have BJ at this point
+  if (isNatural(G.hands[0])) {
+    G.hands[0].status = 'bj';
+    G.holeUp = true;
+    countCard(G.dCards[1]);
+    G.phase = 'done';
+    settle();
+    setAnims();
+    updateSummary();
+  } else {
+    G.phase = 'play';
+    G.hintShown = false;
+  }
+  render();
+}
+
+function handleIns(take) {
+  if (take) {
+    const cost  = Math.floor(G.roundBet / 2);
+    G.insBet    = cost;
+    G.balance  -= cost;
+  }
+
+  if (total(G.dCards) === 21) {
+    // Dealer has BJ
+    G.dealerBJ = true;
+    G.holeUp   = true;
+    countCard(G.dCards[1]);
+    if (G.insBet > 0) {
+      G.balance += G.insBet * (CFG.INS_PAYS + 1); // return stake + 2:1 payout
+      G.insBet   = 0;
+    }
+    resolveDealerBJ();
+  } else {
+    // No dealer BJ; insurance bet is lost (already deducted)
+    G.insBet = 0;
+    // After insurance resolution when dealer showed Ace, surrender is NOT available
+    // (per ruleset: surrender unavailable when dealer shows Ace and has peeked)
+    afterInsResolvedNoBJ();
+  }
+}
+
+function afterInsResolvedNoBJ() {
+  // Same as afterPeekNoBJ but surrender is locked out (handled in avail() via upKey === 'A')
+  if (isNatural(G.hands[0])) {
+    G.hands[0].status = 'bj';
+    G.holeUp = true;
+    countCard(G.dCards[1]);
+    G.phase = 'done';
+    settle();
+    setAnims();
+    updateSummary();
+  } else {
+    G.phase = 'play';
+    G.hintShown = false;
+  }
+  render();
+}
+
+function resolveDealerBJ() {
+  // Dealer has blackjack — settle all hands immediately
+  for (const h of G.hands) {
+    if (isNatural(h)) {
+      h.status = 'bj';
+      G.balance += h.bet;  // push: return bet
+      h.result  = { label: 'Push — Tied Blackjack', css: 'push-t', amount: 0 };
+    } else {
+      h.result  = { label: `Dealer Blackjack — Lose $${h.bet.toFixed(2)}`, css: 'lose-t', amount: -h.bet };
+    }
+  }
+  G.phase = 'done';
+  setAnims();
+  updateSummary();
+  render();
+}
+
+// ════════════════════════════════════════════════════════════════
+//  PLAYER ACTIONS
+// ════════════════════════════════════════════════════════════════
+function tryAction(action) {
+  if (G.phase !== 'play') return;
+  if (document.getElementById('dev-ov').classList.contains('open')) return;
+
+  const av = avail(G.hIdx);
+  const ok = { hit: av.canH, stand: av.canS, double: av.canD, split: av.canP, surrender: av.canR };
+  if (!ok[action]) return;
+
+  // Check for basic-strategy deviation (skip if hint already shown)
+  if (!G.hintShown) {
+    const bs = getBSRec(G.hIdx);
+    if (bs.resolved !== action) {
+      G.pending = action;
+      document.getElementById('dev-msg').textContent =
+        `You chose "${actionLabel(action)}" but basic strategy recommends "${bs.label}" here.`;
+      document.getElementById('dev-ov').classList.add('open');
+      return;
+    }
+  }
+
+  doAction(action);
+}
+
+function doAction(action) {
+  G.pending = null;
+  switch (action) {
+    case 'hit':       doHit();       break;
+    case 'stand':     doStand();     break;
+    case 'double':    doDouble();    break;
+    case 'split':     doSplit();     break;
+    case 'surrender': doSurrender(); break;
+  }
+}
+
+function doHit() {
+  const h = G.hands[G.hIdx];
+  h.acted = true;
+  const card = draw(); countCard(card);
+  h.cards.push(card);
+  hideHint();
+  const t = total(h.cards);
+  if      (t > 21) { h.status = 'bust';  nextHand(); }
+  else if (t === 21){ h.status = 'stood'; nextHand(); }
+  else              { render(); }
+}
+
+function doStand() {
+  G.hands[G.hIdx].status = 'stood';
+  nextHand();
+}
+
+function doDouble() {
+  const h = G.hands[G.hIdx];
+  G.balance -= h.bet;   // deduct matching amount
+  h.bet     *= 2;       // double the bet
+  h.doubled  = true;
+  h.acted    = true;
+  const card = draw(); countCard(card);
+  h.cards.push(card);
+  hideHint();
+  const t = total(h.cards);
+  h.status = t > 21 ? 'bust' : 'stood';
+  nextHand();
+}
+
+function doSplit() {
+  const h    = G.hands[G.hIdx];
+  const isAce = h.cards[0].rank === 'A';
+  const c1   = h.cards[0];
+  const c2   = h.cards[1];
+
+  G.balance -= h.bet;   // deduct for second hand
+
+  // Deal one card to each split hand immediately
+  const n1 = draw(); countCard(n1);
+  const n2 = draw(); countCard(n2);
+
+  h.cards    = [c1, n1];
+  h.fromSplit = true;
+  h.fromAce   = isAce;
+  h.acted     = false;
+
+  const newHand = {
+    cards:    [c2, n2],
+    bet:      G.roundBet,   // always original bet per split
+    status:   'active',
+    fromSplit: true,
+    fromAce:   isAce,
+    doubled:   false,
+    acted:     false,
+    result:    null,
+    anim:      '',
+  };
+
+  G.hands.splice(G.hIdx + 1, 0, newHand);
+  hideHint();
+
+  if (isAce) {
+    h.status = 'stood';
+    nextHand();
+  } else {
+    const t = total(h.cards);
+    if (t === 21) { h.status = 'stood'; nextHand(); }
+    else          { render(); }
+  }
+}
+
+function doSurrender() {
+  G.hands[G.hIdx].status = 'surr';
+  nextHand();
+}
+
+function nextHand() {
+  G.hIdx++;
+  if (G.hIdx >= G.hands.length) {
+    // Check if dealer needs to play at all
+    const allOver = G.hands.every(h => h.status === 'bust' || h.status === 'surr');
+    if (allOver) { endRound(); return; }
+    startDealerTurn();
+    return;
+  }
+
+  const h = G.hands[G.hIdx];
+  // Auto-complete hands that require no player decision
+  if (h.fromAce)              { h.status = 'stood'; nextHand(); return; }
+  if (total(h.cards) === 21)  { h.status = 'stood'; nextHand(); return; }
+  if (h.status !== 'active')  { nextHand(); return; }
+
+  G.hintShown = false;
+  hideHint();
+  render();
+}
+
+// ════════════════════════════════════════════════════════════════
+//  DEALER TURN
+// ════════════════════════════════════════════════════════════════
+function startDealerTurn() {
+  G.phase  = 'dealer';
+  G.holeUp = true;
+  countCard(G.dCards[1]);  // count hole card now that it's revealed
+  render();
+  setTimeout(dealerStep, 750);
+}
+
+function dealerStep() {
+  const t    = total(G.dCards);
+  const soft = isSoft(G.dCards);
+  // H17: hit on soft 17 or lower
+  if (t < 17 || (t === 17 && soft)) {
+    const card = draw(); countCard(card);
+    G.dCards.push(card);
+    render();
+    setTimeout(dealerStep, 580);
+  } else {
+    endRound();
+  }
+}
+
+function endRound() {
+  settle();
+  G.phase = 'done';
+  setAnims();
+  updateSummary();
+  render();
+}
+
+// ════════════════════════════════════════════════════════════════
+//  SETTLEMENT
+// ════════════════════════════════════════════════════════════════
+function settle() {
+  const dt   = total(G.dCards);
+  const dBust = dt > 21;
+
+  for (const h of G.hands) {
+    if (h.result) continue;   // already settled (e.g. in dealer-BJ path)
+
+    const pt  = total(h.cards);
+    const nat = isNatural(h);
+
+    if (h.status === 'surr') {
+      const half   = h.bet / 2;
+      G.balance   += half;
+      h.result     = { label: `Surrender — -$${half.toFixed(2)}`, css: 'lose-t', amount: -half };
+
+    } else if (h.status === 'bust') {
+      h.result     = { label: `Bust — -$${h.bet.toFixed(2)}`, css: 'lose-t', amount: -h.bet };
+
+    } else if (nat) {
+      // Natural blackjack: dealer confirmed not to have BJ (handled earlier)
+      const pay    = h.bet * CFG.BJ_PAYS;
+      G.balance   += h.bet + pay;
+      h.result     = { label: `Blackjack! +$${pay.toFixed(2)}`, css: 'bj-t', amount: pay };
+
+    } else if (dBust) {
+      G.balance   += h.bet * 2;
+      h.result     = { label: `Win (Dealer Bust) +$${h.bet.toFixed(2)}`, css: 'win-t', amount: h.bet };
+
+    } else if (pt > dt) {
+      G.balance   += h.bet * 2;
+      h.result     = { label: `Win +$${h.bet.toFixed(2)}`, css: 'win-t', amount: h.bet };
+
+    } else if (pt === dt) {
+      G.balance   += h.bet;
+      h.result     = { label: `Push — $0`, css: 'push-t', amount: 0 };
+
+    } else {
+      h.result     = { label: `Lose -$${h.bet.toFixed(2)}`, css: 'lose-t', amount: -h.bet };
+    }
+  }
+}
+
+function setAnims() {
+  for (const h of G.hands) {
+    if (!h.result) continue;
+    const c = h.result.css;
+    h.anim  = c === 'bj-t'   ? 'ab'
+            : c === 'win-t'  ? 'aw'
+            : c === 'lose-t' ? 'al'
+            : c === 'push-t' ? 'ap'
+            : '';
+  }
+}
+
+function updateSummary() {
+  const parts = G.hands.filter(h => h.result).map(h => h.result.label);
+  G.lastSummary = parts.length ? 'Last: ' + parts.join(' | ') : '';
+}
+
+// ════════════════════════════════════════════════════════════════
+//  HINT SYSTEM
+// ════════════════════════════════════════════════════════════════
+function showHint() {
+  if (G.phase !== 'play') return;
+  G.hintShown = true;
+  const bs  = getBSRec(G.hIdx);
+  const el  = document.getElementById('hint-box');
+  el.style.display = 'block';
+  el.textContent   = `Basic strategy: ${bs.label}`;
+}
+
+function hideHint() {
+  document.getElementById('hint-box').style.display = 'none';
+  G.hintShown = false;
+}
+
+// ════════════════════════════════════════════════════════════════
+//  EVENT HANDLERS
+// ════════════════════════════════════════════════════════════════
+function initEvents() {
+  // Chips
+  document.querySelectorAll('.chip').forEach(ch => {
+    ch.addEventListener('click', () => {
+      if (G.phase !== 'bet' && G.phase !== 'done') return;
+      const v  = parseInt(ch.dataset.v);
+      const nb = G.stagedBet + v;
+      if (nb <= CFG.MAX_BET && nb <= G.balance) { G.stagedBet = nb; render(); }
+    });
+  });
+
+  // Custom amount
+  document.getElementById('cust').addEventListener('change', e => {
+    if (G.phase !== 'bet' && G.phase !== 'done') return;
+    let v = parseInt(e.target.value) || 0;
+    v = Math.max(0, Math.min(CFG.MAX_BET, v, G.balance));
+    G.stagedBet = v;
+    e.target.value = '';
+    render();
+  });
+
+  // Clear
+  document.getElementById('b-clr').addEventListener('click', () => {
+    if (G.phase !== 'bet' && G.phase !== 'done') return;
+    G.stagedBet = 0; render();
+  });
+
+  // Deal
+  document.getElementById('b-deal').addEventListener('click', () => {
+    if (G.phase === 'bet' || G.phase === 'done') newRound();
+  });
+
+  // Insurance
+  document.getElementById('b-ins-y').addEventListener('click', () => handleIns(true));
+  document.getElementById('b-ins-n').addEventListener('click', () => handleIns(false));
+
+  // Player action buttons
+  document.getElementById('b-hit').addEventListener('click', () => tryAction('hit'));
+  document.getElementById('b-std').addEventListener('click', () => tryAction('stand'));
+  document.getElementById('b-dbl').addEventListener('click', () => tryAction('double'));
+  document.getElementById('b-spl').addEventListener('click', () => tryAction('split'));
+  document.getElementById('b-sur').addEventListener('click', () => tryAction('surrender'));
+
+  // Hint
+  document.getElementById('b-hnt').addEventListener('click', showHint);
+
+  // Deviation modal
+  document.getElementById('b-dev-ok').addEventListener('click', () => {
+    document.getElementById('dev-ov').classList.remove('open');
+    if (G.pending) doAction(G.pending);
+  });
+  document.getElementById('b-dev-no').addEventListener('click', () => {
+    document.getElementById('dev-ov').classList.remove('open');
+    G.pending = null;
+  });
+
+  // Count toggle
+  document.getElementById('count-tog').addEventListener('click', () => {
+    G.showCount = !G.showCount;
+    const btn = document.getElementById('count-tog');
+    btn.textContent = `Count: ${G.showCount ? 'ON' : 'OFF'}`;
+    btn.classList.toggle('on', G.showCount);
+    renderCount();
+  });
+
+  // Keyboard shortcuts: H=Hit, S=Stand, D=Double, P=Split, Q=Surrender
+  document.addEventListener('keydown', e => {
+    if (G.phase !== 'play') return;
+    if (['input','textarea'].includes(e.target.tagName.toLowerCase())) return;
+    if (document.getElementById('dev-ov').classList.contains('open')) return;
+    const map = { h:'hit', s:'stand', d:'double', p:'split', q:'surrender' };
+    const act = map[e.key.toLowerCase()];
+    if (act) { e.preventDefault(); tryAction(act); }
+  });
+}
+
+// ════════════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════════════
+freshShoe();
+initEvents();
+render();
+</script>
+</body>
+</html>

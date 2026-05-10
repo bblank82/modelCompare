@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Model Comparison Dashboard</title>
+    <!-- Include Markdown parser -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Include Syntax Highlighter -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="data.js"></script> <!-- Load our normalized summary data -->
+    
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --bg-panel: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --border: #334155;
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            padding: 16px 24px;
+            background-color: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+        
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .local-warning {
+            color: #fbbf24;
+            font-size: 0.85rem;
+            background: rgba(251, 191, 36, 0.1);
+            padding: 6px 12px;
+            border-radius: 4px;
+            border: 1px solid #fbbf24;
+            display: none;
+        }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border);
+            min-width: 0;
+        }
+        
+        .pane:last-child {
+            border-right: none;
+        }
+
+        .pane-controls {
+            padding: 12px;
+            background-color: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        select {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 6px 12px;
+            border-radius: 4px;
+            outline: none;
+            font-size: 0.9rem;
+        }
+
+        .tabs {
+            display: flex;
+            background-color: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tab {
+            padding: 10px 16px;
+            cursor: pointer;
+            color: var(--text-muted);
+            border-bottom: 2px solid transparent;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .tab:hover {
+            color: var(--text-main);
+        }
+
+        .tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        .content-area {
+            flex: 1;
+            position: relative;
+            background-color: var(--bg-dark);
+            overflow: auto;
+        }
+
+        .content-view {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            display: none;
+            overflow: auto;
+        }
+
+        .content-view.active {
+            display: block;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background-color: #fff; /* Live games usually look best on their own background */
+        }
+
+        pre {
+            margin: 0 !important;
+            min-height: 100%;
+            border-radius: 0 !important;
+        }
+
+        .markdown-body {
+            padding: 24px;
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+        
+        .markdown-body h1, .markdown-body h2, .markdown-body h3 {
+            margin-top: 24px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 8px;
+        }
+        
+        .markdown-body ul { padding-left: 24px; margin-bottom: 16px; }
+        .markdown-body p { margin-bottom: 16px; }
+
+        /* Normalized Summary Card */
+        .summary-card {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+        .summary-card h3 { margin-top: 0; border: none; padding: 0; color: var(--accent); }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 8px 16px;
+            margin-top: 12px;
+            font-size: 0.9rem;
+        }
+        .summary-label { color: var(--text-muted); font-weight: 600; }
+        .feature-tag {
+            display: inline-block;
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            margin: 2px;
+        }
+        .prompt-link {
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        .prompt-link:hover {
+            text-decoration: underline;
+        }
+        .open-window-btn {
+            font-size: 0.8rem;
+            color: var(--accent);
+            text-decoration: none;
+            padding: 4px 8px;
+            border: 1px solid var(--accent);
+            border-radius: 4px;
+            margin-left: auto;
+        }
+        .open-window-btn:hover {
+            background-color: rgba(59, 130, 246, 0.1);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Model Compare Dashboard</h1>
+        <div class="header-controls">
+            <a href="basePrompt.md" target="_blank" class="prompt-link">View Base Prompt</a>
+            <div id="local-warning" class="local-warning">
+                ⚠️ Fetch API requires HTTP server. Run <code>python3 -m http.server</code> to view code/markdown.
+            </div>
+            <select id="layout-toggle">
+                <option value="split">Split View (Compare)</option>
+                <option value="single">Single View</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="main-container" id="main-container">
+        <!-- Pane 1 -->
+        <div class="pane" id="pane-1">
+            <div class="pane-controls">
+                <select class="model-select" data-pane="1"></select>
+                <a href="#" target="_blank" class="open-window-btn" id="open-window-1">Open in New Window</a>
+            </div>
+            <div class="tabs">
+                <div class="tab active" data-target="live" data-pane="1">Live Game</div>
+                <div class="tab" data-target="code" data-pane="1">Source Code</div>
+                <div class="tab" data-target="report" data-pane="1">Build Report</div>
+            </div>
+            <div class="content-area">
+                <div class="content-view active" id="live-1">
+                    <iframe id="iframe-1"></iframe>
+                </div>
+                <div class="content-view" id="code-1">
+                    <pre><code class="language-html" id="code-block-1">Loading...</code></pre>
+                </div>
+                <div class="content-view" id="report-1">
+                    <div class="markdown-body">
+                        <div id="summary-1"></div>
+                        <hr style="margin:30px 0; border-color:var(--border);">
+                        <h2>Raw Markdown Report</h2>
+                        <div id="md-content-1">Loading...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pane 2 -->
+        <div class="pane" id="pane-2">
+            <div class="pane-controls">
+                <select class="model-select" data-pane="2"></select>
+                <a href="#" target="_blank" class="open-window-btn" id="open-window-2">Open in New Window</a>
+            </div>
+            <div class="tabs">
+                <div class="tab active" data-target="live" data-pane="2">Live Game</div>
+                <div class="tab" data-target="code" data-pane="2">Source Code</div>
+                <div class="tab" data-target="report" data-pane="2">Build Report</div>
+            </div>
+            <div class="content-area">
+                <div class="content-view active" id="live-2">
+                    <iframe id="iframe-2"></iframe>
+                </div>
+                <div class="content-view" id="code-2">
+                    <pre><code class="language-html" id="code-block-2">Loading...</code></pre>
+                </div>
+                <div class="content-view" id="report-2">
+                    <div class="markdown-body">
+                        <div id="summary-2"></div>
+                        <hr style="margin:30px 0; border-color:var(--border);">
+                        <h2>Raw Markdown Report</h2>
+                        <div id="md-content-2">Loading...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Check if running via file://
+        if (window.location.protocol === 'file:') {
+            document.getElementById('local-warning').style.display = 'block';
+        }
+
+        // Initialize Data
+        const models = appData.models;
+        
+        // Setup dropdowns
+        const selects = document.querySelectorAll('.model-select');
+        selects.forEach(select => {
+            models.forEach((m, idx) => {
+                const option = document.createElement('option');
+                option.value = idx;
+                option.textContent = `${m.tool} - ${m.model}`;
+                select.appendChild(option);
+            });
+            
+            select.addEventListener('change', (e) => {
+                const paneId = e.target.getAttribute('data-pane');
+                loadModel(paneId, models[e.target.value]);
+            });
+        });
+
+        // Set initial models
+        if (models.length >= 2) {
+            selects[0].value = 0;
+            selects[1].value = 5; // Pick a Claude model for Pane 2 by default
+            loadModel("1", models[0]);
+            loadModel("2", models[5]);
+        }
+
+        // Layout Toggle
+        document.getElementById('layout-toggle').addEventListener('change', (e) => {
+            const pane2 = document.getElementById('pane-2');
+            if (e.target.value === 'single') {
+                pane2.style.display = 'none';
+            } else {
+                pane2.style.display = 'flex';
+            }
+        });
+
+        // Tab Switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                const paneId = e.target.getAttribute('data-pane');
+                const target = e.target.getAttribute('data-target');
+                
+                // Update active tab
+                document.querySelectorAll(`.tab[data-pane="${paneId}"]`).forEach(t => t.classList.remove('active'));
+                e.target.classList.add('active');
+                
+                // Update active view
+                document.querySelectorAll(`#pane-${paneId} .content-view`).forEach(v => v.classList.remove('active'));
+                document.getElementById(`${target}-${paneId}`).classList.add('active');
+            });
+        });
+
+        // Fetch wrapper to handle local file errors gracefully
+        async function fetchFile(path) {
+            if (!path) return "No file provided.";
+            try {
+                const response = await fetch(path);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                return await response.text();
+            } catch (error) {
+                return `Error loading file: ${error.message}\nIf you are viewing this via file://, you need to run a local HTTP server to fetch files.\nRun 'python3 -m http.server' in this directory.`;
+            }
+        }
+
+        function buildNormalizedSummaryHTML(modelData) {
+            return `
+                <div class="summary-card">
+                    <h3>Normalized Summary</h3>
+                    <div class="summary-grid">
+                        <span class="summary-label">Tool:</span> <span>${modelData.tool}</span>
+                        <span class="summary-label">Model:</span> <span>${modelData.model}</span>
+                        <span class="summary-label">Time:</span> <span>${modelData.executionTime}</span>
+                        <span class="summary-label">Lines:</span> <span>${modelData.linesOfCode}</span>
+                        <span class="summary-label">Notes:</span> <span>${modelData.notes}</span>
+                        <span class="summary-label">Features:</span> 
+                        <div>
+                            ${modelData.features.map(f => `<span class="feature-tag">${f}</span>`).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function loadModel(paneId, modelData) {
+            // Load Iframe and update link
+            document.getElementById(`iframe-${paneId}`).src = modelData.htmlPath;
+            document.getElementById(`open-window-${paneId}`).href = modelData.htmlPath;
+            
+            // Load Normalized Summary
+            document.getElementById(`summary-${paneId}`).innerHTML = buildNormalizedSummaryHTML(modelData);
+
+            // Load Code
+            const codeBlock = document.getElementById(`code-block-${paneId}`);
+            codeBlock.textContent = "Loading source code...";
+            const codeText = await fetchFile(modelData.htmlPath);
+            codeBlock.textContent = codeText;
+            Prism.highlightElement(codeBlock);
+
+            // Load Markdown
+            const mdContent = document.getElementById(`md-content-${paneId}`);
+            if (modelData.mdPath) {
+                mdContent.innerHTML = "Loading markdown report...";
+                const mdText = await fetchFile(modelData.mdPath);
+                if (mdText.startsWith("Error")) {
+                    mdContent.innerHTML = `<pre>${mdText}</pre>`;
+                } else {
+                    mdContent.innerHTML = marked.parse(mdText);
+                }
+            } else {
+                mdContent.innerHTML = "<p><i>No markdown build report was provided for this model run.</i></p>";
+            }
+        }
+    </script>
+</body>
+</html>

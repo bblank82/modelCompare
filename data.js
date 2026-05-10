@@ -109,6 +109,39 @@ const appData = {
       notes: "Complete application as one self-contained .html file. Built with 14 steps, fully documented.",
       htmlPath: "VSCode/Haiku 4.5/blackjack.html",
       mdPath: "VSCode/Haiku 4.5/BLACKJACK_CREATION_REPORT.md"
+    },
+    {
+      id: "cc_haiku_45",
+      tool: "Claude Code",
+      model: "Haiku 4.5",
+      executionTime: "~3-4 minutes",
+      linesOfCode: "~1,200",
+      features: ["6-deck shoe", "H17", "DAS", "Late Surrender", "Hint System", "Keyboard Shortcuts", "Hi-Lo Toggle"],
+      notes: "Complete and fully playable. Delivered as a single monolithic HTML file. Modular architecture with single game state object and comprehensive testing steps documented.",
+      htmlPath: "Claude Code/Haiku 4.5/blackjack.html",
+      mdPath: "Claude Code/Haiku 4.5/BLACKJACK_BUILD_SUMMARY.md"
+    },
+    {
+      id: "cc_opus_47",
+      tool: "Claude Code",
+      model: "Opus 4.7",
+      executionTime: "14m 11s",
+      linesOfCode: "~1,150",
+      features: ["6-deck shoe", "H17", "DAS", "Late Surrender", "Hint System", "Keyboard Shortcuts", "Hi-Lo Toggle"],
+      notes: "Generated in a single-shot pass with no iterations needed. Includes detailed pre-generation internal planning covering architecture, phase machine, and edge cases.",
+      htmlPath: "Claude Code/Opus 4.7/blackjack.html",
+      mdPath: "Claude Code/Opus 4.7/BUILD_LOG.md"
+    },
+    {
+      id: "cc_sonnet_46",
+      tool: "Claude Code",
+      model: "Sonnet 4.6",
+      executionTime: "~3–4 minutes",
+      linesOfCode: "1,383",
+      features: ["6-deck shoe", "H17", "DAS", "Late Surrender", "Hint System", "Keyboard Shortcuts", "Hi-Lo Toggle"],
+      notes: "Produced in one response with no follow-up corrections. Handled complex split hand states and provided detailed flow documentation.",
+      htmlPath: "Claude Code/Sonnet 4.6/blackjack.html",
+      mdPath: "Claude Code/Sonnet 4.6/blackjack_build_log.md"
     }
   ]
 };
